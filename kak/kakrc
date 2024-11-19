@@ -1,0 +1,33 @@
+#: CONFIG
+
+set-option global startup_info_version 100000000
+set-option global tabstop              2
+set-option global indentwidth          2
+set-face   global comment              cyan+i
+set-face   global LineNumbersWrapped   black+i
+
+# Insert spaces instead of tabs.
+hook global InsertChar \t %{
+  execute-keys -draft -itersel h@
+}
+# Add number lines to buffers whose names do not contain asterisks.
+hook global BufCreate ^[^*]+$ %{
+  add-highlighter buffer/ number-lines -hlcursor -relative
+  # add-highlighter buffer/ wrap -word -indent -marker …
+}
+
+
+#: PLUGINS
+
+source "%val{config}/plugins/surround.kak"
+declare-user-mode surround
+map -docstring "surround" global user     s ":enter-user-mode surround<ret>"
+map -docstring "add"      global surround a ":add-surround<ret>"
+map -docstring "delete"   global surround d ":delete-surround<ret>"
+map -docstring "replace"  global surround r ":replace-surround<ret>"
+
+source "%val{config}/plugins/explore-files.kak"
+map -docstring "files"    global user     f ":explore-files<ret>"
+
+source "%val{config}/plugins/explore-buffers.kak"
+map -docstring "buffers"  global user     b ":explore-buffers<ret>"

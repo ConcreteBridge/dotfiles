@@ -1,4 +1,5 @@
-declare-option -docstring 'Whether to show hidden files' bool explore_files_show_hidden no
+declare-option -docstring 'Whether to show hidden files'      bool explore_files_show_hidden no
+declare-option -docstring 'Whether to show files recursively' bool explore_files_show_recursive no
 
 declare-option -hidden str explore_files
 declare-option -hidden int explore_files_count
@@ -7,50 +8,64 @@ set-face global ExploreFiles       'magenta,default'
 set-face global ExploreDirectories 'cyan,default'
 
 add-highlighter shared/*directory*                     regions
-add-highlighter shared/*directory*/content             default-region group
-add-highlighter shared/*directory*/content/files       regex '^.+$'  0:ExploreFiles
+add-highlighter shared/*directory*/content             region '^' '$' group
+add-highlighter shared/*directory*/content/files       regex '^.+[^/]$' 0:ExploreFiles
 add-highlighter shared/*directory*/content/directories regex '^.+/$' 0:ExploreDirectories
 
 hook global WinSetOption filetype=\*directory\* %{
   add-highlighter window/ ref *directory*
-  map window normal <ret>       ':<space>explore-files-forward<ret>'
-  map window normal <backspace> ':<space>explore-files-back<ret>'
-  map window normal .           ':<space>explore-files-toggle-hidden<ret>'
-  map window normal R           ':<space>explore-files-recursive %val(bufname)<ret>'
-  map window normal q           ':<space>explore-files-change-directory<ret>'
-  map window normal <esc>       ':<space>delete-buffer<ret>'
+  map window normal l     ':explore-files-forward<ret>'
+  map window normal h     ':explore-files-back<ret>'
+  map window normal j     %{jx_<a-;>}
+  map window normal k     %{kx_<a-;>}
+  map window normal C     %{;Cx_<a-;>}
+  map window normal <a-C> %{;<a-C>x_<a-;>}
+  map window normal .     ':explore-files-toggle-hidden<ret>'
+  map window normal R     ':explore-files-toggle-recursive<ret>'
+  map window normal c     ':explore-files-change-directory<ret>'
+  map window normal q     ':delete-buffer<ret>'
   hook -always -once window WinSetOption filetype=.* %{
     remove-highlighter window/*directory*
   }
 }
 
+define-command -hidden show-explore-files-options %{
+  info -title 'Explore Files' "l: open
+h: navigate to parent directory
+.: show hidden
+R: show recursive
+c: set current working directory
+q: quit
+"
+}
+
 define-command -hidden explore-files-display -params 1..2 %{ evaluate-commands %sh{
-  command=$1
-  path=$(realpath "${2:-.}")
-  name=$(basename "$path")
-  out=$(mktemp --directory)
-  fifo=$out/fifo
-  last_buffer_name=$(basename "$kak_bufname")
+  command="$1"
+  path="$(realpath "${2:-.}")"
+  name="$(basename "$path")"
+  out="$(mktemp --directory)"
+  fifo="$out/fifo"
+  last_buffer_name="$(basename "$kak_bufname")"
+
   mkfifo $fifo
   cd "$path"
   (eval "$command" > $fifo) < /dev/null > /dev/null 2>&1 &
-  echo "
+  printf %s "
     edit! -fifo %{$fifo} %{$path}
     set-option buffer filetype '*directory*'
 
     hook -once window NormalIdle '' %{
       evaluate-commands -save-regs / %{
         set-register / %(^\Q$last_buffer_name\E/?$)
-        try %{execute-keys %{n<a-;>}}
+        try %{execute-keys %{nx_<a-;>}}
       }
+
       # Information
       echo -markup {Information} %{Showing $name/ entries}
+      show-explore-files-options
     }
 
     hook -always buffer BufCloseFifo '' %{nop %sh{rm -r $out}}
-
-    # Information
-    echo -markup {Information} %{Showing $name/ entries}
 "
 }}
 
@@ -61,14 +76,21 @@ define-command -hidden explore-files-smart -params 0..1 %{ evaluate-commands %sh
 }}
 
 define-command -hidden explore-files -params 0..1 -docstring 'Explore directory entries' %{
-  # explore-files-display "gls --dereference --group-directories-first --indicator-style=slash %sh(test $kak_opt_explore_files_show_hidden = true && echo --almost-all)" %arg(1)
-  explore-files-display "fd --maxdepth 1 --follow %sh(test $kak_opt_explore_files_show_hidden = true && echo -H)" %arg(1)
+  evaluate-commands %sh{
+    cmd="fd"
+    test $kak_opt_explore_files_show_recursive = false && cmd="$cmd --maxdepth 1"
+    test $kak_opt_explore_files_show_hidden = true     && cmd="$cmd --hidden"
+
+    printf '%s "%s" "%s"' explore-files-display "$cmd" '%arg(1)'
+  }
+
+  # explore-files-display "fd %sh([ $kak_opt_explore_files_show_recursive = false] || printf %s --maxdepth\ 1) %sh([ $kak_opt_explore_files_show_hidden = true ] && printf %s --hidden)" %arg(1)
 }
 
-define-command -hidden explore-files-recursive -params 0..1 -docstring 'Explore directory entries recursively' %{
-  # explore-files-display "find %sh(test $kak_opt_explore_files_show_hidden = false && echo -not -path ""'*/.*'"")" %arg(1)
-  explore-files-display "fd --follow %sh(test $kak_opt_explore_files_show_hidden = true && echo -H)" %arg(1)
-}
+# define-command -hidden explore-files-recursive -params 0..1 -docstring 'Explore directory entries recursively' %{
+#   # explore-files-display "find %sh(test $kak_opt_explore_files_show_hidden = false && echo -not -path ""'*/.*'"")" %arg(1)
+#   explore-files-display "fd --follow %sh([ $kak_opt_explore_files_show_hidden = true ] && printf %s --hidden)" %arg(1)
+# }
 
 define-command -hidden explore-files-forward -docstring 'Edit selected files' %{
   set-option current explore_files %val(bufname)
@@ -82,7 +104,7 @@ define-command -hidden explore-files-forward -docstring 'Edit selected files' %{
   evaluate-commands %sh{
     count=$kak_opt_explore_files_count
     test $count -gt 1 &&
-      echo "echo -markup {Information} %[$count files opened]"
+      printf %s "echo -markup {Information} %[$count files opened]"
   }
 }
 
@@ -94,8 +116,8 @@ define-command -hidden explore-files-back -docstring 'Explore parent directory' 
 }
 
 define-command -hidden explore-files-change-directory -docstring 'Change directory and quit' %{
-  change-directory %val(bufname)
-  delete-buffer
+  change-directory %val{bufname}
+  echo -markup {Information} "Directory changed to %val{bufname}"
 }
 
 define-command -hidden explore-files-toggle-hidden -docstring 'Toggle hidden files' %{
@@ -106,7 +128,14 @@ define-command -hidden explore-files-toggle-hidden -docstring 'Toggle hidden fil
       echo yes
     fi
   }
-  explore-files %val(bufname)
+  explore-files %val{bufname}
+}
+
+define-command -hidden explore-files-toggle-recursive -docstring 'Toggle recursive files' %{
+  set-option current explore_files_show_recursive %sh{
+    [ $kak_opt_explore_files_show_recursive = true ] && echo no || echo yes
+  }
+  explore-files %val{bufname}
 }
 
 define-command -hidden explore-files-enable %{

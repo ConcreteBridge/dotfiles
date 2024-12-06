@@ -1,10 +1,14 @@
 #: CONFIG
 
+colorscheme rose-pine
+
 set-option global startup_info_version 100000000
 set-option global tabstop              2
 set-option global indentwidth          2
-set-face   global comment              cyan+i
-set-face   global LineNumbersWrapped   black+i
+# set-face   global comment              yellow+i
+# set-face   global LineNumbers          green
+# set-face   global LineNumberCursor     green+rb
+# set-face   global LineNumbersWrapped   blue+i
 
 # Insert spaces instead of tabs.
 hook global InsertChar \t %{
@@ -12,9 +16,14 @@ hook global InsertChar \t %{
 }
 # Add number lines to buffers whose names do not contain asterisks.
 hook global BufCreate ^[^*]+$ %{
-  add-highlighter buffer/ number-lines -hlcursor -relative
-  # add-highlighter buffer/ wrap -word -indent -marker …
+  add-highlighter buffer/ number-lines -hlcursor -relative -separator ' '
+  add-highlighter buffer/ wrap -word -indent
 }
+
+hook global BufCreate ^.*\.(sls)$ %{ set buffer filetype yaml }
+
+map -docstring "comment"           global user c ":comment-line<ret>"
+map -docstring "copy to clipboard" global user y "!pbcopy<ret>"
 
 
 #: PLUGINS
@@ -27,7 +36,49 @@ map -docstring "delete"   global surround d ":delete-surround<ret>"
 map -docstring "replace"  global surround r ":replace-surround<ret>"
 
 source "%val{config}/plugins/explore-files.kak"
-map -docstring "files"    global user     f ":explore-files<ret>"
-
 source "%val{config}/plugins/explore-buffers.kak"
-map -docstring "buffers"  global user     b ":explore-buffers<ret>"
+declare-user-mode explore
+map -docstring "explore"         global user     e ":enter-user-mode explore<ret>"
+map -docstring "files"           global explore  f ":explore-files<ret>"
+map -docstring "buffers"         global explore  b ":explore-buffers<ret>"
+
+hook global WinSetOption filetype=\*directory\* %{
+  remove-highlighter 'buffer/number-lines_-hlcursor_-relative_-separator_ '
+}
+hook global WinSetOption filetype=\*buffer\* %{
+  remove-highlighter 'buffer/number-lines_-hlcursor_-relative_-separator_ '
+}
+
+declare-user-mode git
+map -docstring "git"      global user     g ":enter-user-mode git<ret>"
+map -docstring "apply"    global git      a ":git apply<ret>"
+map -docstring "blame"    global git      b ":git blame<ret>"
+map -docstring "checkout" global git      c ":git checkout<ret>"
+
+source "%val{config}/plugins/line.kak"
+
+
+#: OTHER
+
+# define-command -hidden open_buffer_picker %{
+#   prompt buffer: -menu -buffer-completion %{
+#     buffer %val{text}
+#   }
+# }
+# map -docstring "buffers" global user b ":open_buffer_picker<ret>"
+
+# define-command -hidden open_file_picker %{
+#   prompt file: -menu -shell-script-candidates 'fd --type=file' %{
+#     edit -existing %val{text}
+#   }
+# }
+# map -docstring "files" global user f ":open_file_picker<ret>"
+
+# define-command -hidden open_rg_picker %{
+#   prompt search: %{
+#     prompt refine: -menu -shell-script-candidates "rg -in '%val{text}'" %{
+#       evaluate-commands "edit -existing %sh{cut -d: -f1 <<< $kak_text}"
+#     }
+#   }
+# }
+# map -docstring "ripgrep" global user r ":open_rg_picker<ret>"

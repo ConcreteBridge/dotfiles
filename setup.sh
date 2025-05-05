@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-_base="stow --dotfiles --verbose --target $HOME"
+_base="stow --dotfiles --target $HOME"
 # _dots="$(dirname $(realpath $0))/dots"
 
 dots_add() {

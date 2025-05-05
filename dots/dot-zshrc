@@ -1,0 +1,78 @@
+bindkey -e
+bindkey "^[[1;5C" forward-word
+bindkey "^[[1;5D" backward-word
+bindkey '^H' backward-kill-word
+bindkey '5~' kill-word
+
+eval "$(mise activate zsh)"
+eval "$(zoxide init zsh)"
+eval "$(starship init zsh)"
+
+
+# FUNCTIONS #
+alias cat='bat --paging never --style rule'
+alias ls='eza --group-directories-first -F'
+alias ll='eza --group-directories-first -F -l'
+alias la='eza --group-directories-first -F -a'
+alias lt='eza --group-directories-first -F --sort new'
+alias lr='eza --tree'
+alias sudo='doas'
+
+function .. { cd .. }
+function up {
+    doas xbps-install -Syu
+}
+function in {
+    doas xbps-install -Sy $@
+}
+function mess {
+    mess="$HOME/mess/$(date +%Y/%V)"
+    current="$HOME/mess/current"
+
+    if [[ ! -e "$mess" ]]; then
+        mkdir -p "$mess"
+        created "$mess"
+    fi
+    if [[ -e "$current" ]]; then
+        if [[ ! -L "$current" ]]; then
+            echo "Error, $current is not a link"
+            return 1
+        fi
+        if [[ ! "$mess" -ef "$current" ]]; then
+            unlink "$current"
+            ln -s "$mess" "$current"
+        fi
+    else
+        ln -s "$mess" "$current"
+    fi
+    cd "$current"
+}
+
+
+# HISTORY #
+HISTFILE=~/.zsh_history
+HISTSIZE=10000
+SAVEHIST=10000
+setopt SHARE_HISTORY
+
+
+# PLUGINS #
+if [[ ! -f ${ZDOTDIR:-${HOME}}/.zcomet/bin/zcomet.zsh ]]; then
+    command git clone https://github.com/agkozak/zcomet.git ${ZDOTDIR:-${HOME}}/.zcomet/bin
+fi
+source ${ZDOTDIR:-${HOME}}/.zcomet/bin/zcomet.zsh
+
+zcomet load aperezdc/zsh-fzy
+bindkey '\ec' fzy-cd-widget
+bindkey '^T'  fzy-file-widget
+bindkey '^R'  fzy-history-widget
+bindkey '^P'  fzy-proc-widget
+zstyle :fzy:cd command fd -td
+zstyle :fzy:file command fd -tf
+
+zcomet load zsh-users/zsh-syntax-highlighting
+zcomet load zsh-users/zsh-autosuggestions
+zcomet load zsh-users/zsh-completions
+
+# rm -f ~/.zcompdump; compinit
+zcomet compinit

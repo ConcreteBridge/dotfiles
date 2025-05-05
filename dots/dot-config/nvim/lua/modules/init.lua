@@ -1,0 +1,8 @@
+require "modules.code.conform"
+require "modules.code.lint"
+require "modules.editor.blink"
+require "modules.editor.fzf"
+require "modules.editor.mini"
+require "modules.ui.noice"
+require "modules.ui.pqf"
+require "modules.ui.treesitter"

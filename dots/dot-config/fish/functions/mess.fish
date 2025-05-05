@@ -8,12 +8,12 @@ function mess --description 'mess directory'
     echo "Created $now"
   end
 
-  if test \( -e $link \) -a \( ! -L $link \)
+  if test -e $link -a ! -L $link
     echo "$link is not a symlink; something is wrong."
     return 1
   end
 
-  if test \( -e $link \) -a \( ! $link -ef $current \)
+  if test -e $link -a ! $link -ef $current
     unlink $link
     ln -s $current $link
   end

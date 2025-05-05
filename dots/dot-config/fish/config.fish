@@ -5,3 +5,6 @@ if status is-interactive
     mise activate fish | source
     zoxide init fish   | source
 end
+
+# Created by `pipx` on 2025-01-06 23:44:37
+set PATH $PATH /home/csjp/.local/bin

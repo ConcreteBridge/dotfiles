@@ -4,9 +4,9 @@ bindkey "^[[1;5D" backward-word
 bindkey '^H' backward-kill-word
 bindkey '5~' kill-word
 
+# eval "$(starship init zsh)"
 eval "$(mise activate zsh)"
 eval "$(zoxide init zsh)"
-eval "$(starship init zsh)"
 
 
 # FUNCTIONS #
@@ -62,6 +62,8 @@ if [[ ! -f ${ZDOTDIR:-${HOME}}/.zcomet/bin/zcomet.zsh ]]; then
 fi
 source ${ZDOTDIR:-${HOME}}/.zcomet/bin/zcomet.zsh
 
+zcomet load geometry-zsh/geometry
+
 zcomet load aperezdc/zsh-fzy
 bindkey '\ec' fzy-cd-widget
 bindkey '^T'  fzy-file-widget
@@ -71,7 +73,9 @@ zstyle :fzy:cd command fd -td
 zstyle :fzy:file command fd -tf
 
 zcomet load zsh-users/zsh-syntax-highlighting
+
 zcomet load zsh-users/zsh-autosuggestions
+
 zcomet load zsh-users/zsh-completions
 
 # rm -f ~/.zcompdump; compinit
